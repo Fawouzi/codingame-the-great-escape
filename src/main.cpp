@@ -2,42 +2,20 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <sstream>
+#include <iomanip>
 
 using namespace std;
 
-struct TPlayer
+enum EDirection
 {
-    typedef std::vector<TPlayer> Vector;
-
-    int mId;
-    int mX;
-    int mY;
-    int mWallsLeft;
-
-    TPlayer (int aId, int aX, int aY, int aWallsLeft) :
-        mId         (aId),
-        mX          (aX),
-        mY          (aY),
-        mWallsLeft  (aWallsLeft)
-    {
-    }
+    eRight = 0,
+    eLeft,
+    eDown
 };
 
-struct TWall
-{
-    typedef std::vector<TWall> Vector;
-
-    int 		mX;
-    int 		mY;
-    std::string mOrientation;
-
-    TWall (int aX, int aY, const std::string& aOrientation) :
-        mX          	(aX),
-        mY          	(aY),
-		mOrientation	(aOrientation)
-    {
-    }
-};
+typedef std::pair<int, int> 		TCoordonnees;
+typedef std::vector<TCoordonnees>	TVectorCoordonnees;
 
 struct TMovesByCell
 {
@@ -59,6 +37,173 @@ struct TMovesByCell
 	}
 };
 
+
+struct TPath
+{
+	// Tableau
+	int mBoard[9][9];
+
+	TPath (void)
+	{
+		for (int x = 0; x < 9; x++)
+		{
+			for (int y = 0; y < 9; y++)
+			{
+				mBoard[x][y] = -1;
+			}
+		}
+	}
+
+	void Dump (void)
+	{
+		std::stringstream 	Trace;
+
+		for (int y = 0; y < 9; y++)
+		{
+			for (int x = 0; x < 9; x++)
+			{
+				Trace << std::right << std::setw(3) << std::setfill(' ') << mBoard[x][y] << " ";
+			}
+
+			Trace << "\r\n";
+		}
+
+		cerr << Trace.str().c_str() << endl;
+	}
+
+	void ProchaineCase (int aX, int aY, int aDistance, TVectorCoordonnees& aVectorCoordonnees)
+	{
+		// La case existe et elle n'avait pas été visitée
+		if ((0 <= aX) && (8 >= aX) && (0 <= aY) && (8 >= aY) && (-1 == mBoard[aX][aY]))
+		{
+			// Maj de la distance
+			mBoard[aX][aY] = aDistance;
+
+			// Ajout de la case aux prochaines à evaluer
+			aVectorCoordonnees.push_back(make_pair(aX, aY));
+		}
+	}
+
+	void Compute (int aX, int aY, TMovesByCell::Matrix& aBoard)
+	{
+        cerr << "Compute - aX : " << aX << " - aY : " << aY  << endl;
+
+		int distance = 0;
+		int casesVisitees = 81;
+		TVectorCoordonnees	VectorCoordonnees;
+
+		// Init de la position
+		mBoard[aX][aY] = distance;
+		casesVisitees--;
+		distance++;
+		VectorCoordonnees.push_back(std::make_pair(aX, aY));
+
+		while (casesVisitees)
+		{
+			TVectorCoordonnees				VectorCoordonneesResultat;
+			TVectorCoordonnees::iterator  	iVecCoord;
+
+			// Parcours des coordonnées obtenues précédemment
+			for (iVecCoord = VectorCoordonnees.begin(); iVecCoord != VectorCoordonnees.end(); iVecCoord++)
+			{
+				int X = iVecCoord->first;
+				int Y = iVecCoord->second;
+
+				if (aBoard[X][Y].mbLeft)
+				{
+					ProchaineCase (X - 1, Y, distance, VectorCoordonneesResultat);	// Gauche
+				}
+				if (aBoard[X][Y].mbRight)
+				{
+					ProchaineCase (X + 1, Y, distance, VectorCoordonneesResultat);	// Droite
+				}
+				if (aBoard[X][Y].mbUp)
+				{
+					ProchaineCase (X, Y - 1, distance, VectorCoordonneesResultat);	// Haut
+				}
+				if (aBoard[X][Y].mbDown)
+				{
+					ProchaineCase (X, Y + 1, distance, VectorCoordonneesResultat);	// Bas
+				}
+			}
+
+			// Le nombre de cases visitées diminue autant que de résultats
+			casesVisitees -= VectorCoordonneesResultat.size();
+
+			// La distance augmente
+			distance++;
+
+			// Sauve pour la prochaine itération
+			VectorCoordonnees = VectorCoordonneesResultat;
+		}
+	}
+};
+
+struct TPlayer
+{
+    typedef std::vector<TPlayer> Vector;
+
+    int 			mId;
+    int 			mX;
+    int 			mY;
+    int 			mWallsLeft;
+    EDirection		mDirection;
+    TPath			mPath;
+
+    TPlayer (int aId, int aX, int aY, int aWallsLeft) :
+        mId         (aId),
+        mX          (aX),
+        mY          (aY),
+        mWallsLeft  (aWallsLeft)
+    {
+    	switch (mId)
+		{
+			case 0: mDirection = eRight; 	break;
+			case 1: mDirection = eLeft;  	break;
+			case 2: mDirection = eDown;  	break;
+			default:
+				cerr << "TPlayer : error sw/case" << endl;
+		}
+    }
+
+    bool ChercheNextMove (int aX, int aY, int aDistance)
+    {
+    	bool bFound = false;
+
+    	// La case existe
+    	if ((0 <= aX) && (8 >= aX) && (0 <= aY) && (8 >= aY))
+    	{
+    		if ((aDistance - 1) == mPath.mBoard[aX][aY])
+    		{
+    			bFound = true;
+    		}
+    	}
+
+    	return bFound;
+    }
+
+    void ComputePath (TMovesByCell::Matrix& aBoard)
+    {
+    	mPath.Compute (mX, mY, aBoard);
+    }
+};
+
+
+struct TWall
+{
+    typedef std::vector<TWall> Vector;
+
+    int 		mX;
+    int 		mY;
+    std::string mOrientation;
+
+    TWall (int aX, int aY, const std::string& aOrientation) :
+        mX          	(aX),
+        mY          	(aY),
+		mOrientation	(aOrientation)
+    {
+    }
+};
 
 void Dump (TPlayer::Vector& aPlayerVector, TWall::Vector& aWallVector)
 {
@@ -88,21 +233,6 @@ void InitBoard (TMovesByCell::Matrix& aBoard, int aWidth, int aHeight)
     for (int i = 0; i < aWidth; i++)
     {
     	aBoard[i].resize (aHeight);
-    }
-
-    // TODO FAB : Adapter en fonction du nb de joueurs
-
-    // Impossible de sortir par le haut ou le bas
-    for (int x = 0; x < aWidth; x++)
-    {
-    	aBoard[x][0].mbUp = false;
-    	aBoard[x][8].mbDown = false;
-    }
-
-    // Impossible de sortir par la gauche
-    for (int y = 0; y < aHeight; y++)
-    {
-    	aBoard[0][y].mbLeft = false;
     }
 }
 
@@ -143,73 +273,104 @@ void MajBoard (TMovesByCell::Matrix& aBoard, TWall::Vector& aWallVector, int aWi
 	}
 }
 
-
-void MoveMyPlayer (TMovesByCell::Matrix& aBoard, TPlayer& aPlayer, int aWidth, int aHeight)
+void MoveMyPlayer (TPlayer& aPlayer)
 {
-	bool bRightOk = true;
-	int iRight;
+	TCoordonnees	MeilleureSortie;
+	TCoordonnees	NextMove;
+	int distance =  999;	// Initialise à une très grande valeur pour la sélection
 
-	for (iRight = 0; iRight < (aWidth - aPlayer.mX); iRight++)
+	// TODO FAB : factoriser
+
+	switch (aPlayer.mDirection)
 	{
-		if (!aBoard[aPlayer.mX + iRight][aPlayer.mY].mbRight)
-		{
-			bRightOk = false;
-			break;
-		}
+		case (eRight) :
+			for (int y = 0; y < 9; y++)
+			{
+				if (distance > aPlayer.mPath.mBoard[8][y])
+				{
+					distance = aPlayer.mPath.mBoard[8][y];
+					MeilleureSortie = make_pair(8, y);
+				}
+			}
+		break;
+
+		case (eLeft) :
+			for (int y = 0; y < 9; y++)
+			{
+				if (distance > aPlayer.mPath.mBoard[0][y])
+				{
+					distance = aPlayer.mPath.mBoard[0][y];
+					MeilleureSortie = make_pair(0, y);
+				}
+			}
+		break;
+
+		case (eDown) :
+			for (int x = 0; x < 9; x++)
+			{
+				if (distance > aPlayer.mPath.mBoard[x][8])
+				{
+					distance = aPlayer.mPath.mBoard[x][8];
+					MeilleureSortie = make_pair(x, 8);
+				}
+			}
+		break;
 	}
 
-	// On privilégie toujours d'aller à droite si possible
-	if (bRightOk)
+	// Initialise le next move
+	NextMove = MeilleureSortie;
+
+	while (distance > 1)
+	{
+		// Gauche
+		if (aPlayer.ChercheNextMove (NextMove.first - 1, NextMove.second, distance))
+		{
+			NextMove.first--;
+		}
+		// Droite
+		else if (aPlayer.ChercheNextMove (NextMove.first + 1, NextMove.second, distance))
+		{
+			NextMove.first++;
+		}
+		// Haut
+		else if (aPlayer.ChercheNextMove (NextMove.first, NextMove.second - 1, distance))
+		{
+			NextMove.second--;
+		}
+		// Bas
+		else
+		{
+			NextMove.second++;
+		}
+
+		distance--;
+	}
+
+	// Compare NextMove à la position courante
+
+	// Gauche
+	if ((NextMove.first == aPlayer.mX - 1) && (NextMove.second == aPlayer.mY))
+	{
+		cout << "LEFT" << endl;
+	}
+	// Droite
+	if ((NextMove.first == aPlayer.mX + 1) && (NextMove.second == aPlayer.mY))
 	{
 		cout << "RIGHT" << endl;
 	}
-	// Nous sommes bloqués, donc ...
-	else
+	// Haut
+	if ((NextMove.first == aPlayer.mX) && (NextMove.second == aPlayer.mY - 1))
 	{
-		int iUp;
-		int iDown;
-
-		for (iUp = 0; iUp < (aHeight - aPlayer.mY); iUp++)
-		{
-			if (aBoard[aPlayer.mX][aPlayer.mY - iUp].mbRight)
-			{
-				break;
-			}
-		}
-
-		for (iDown = 0; iDown < (aHeight - aPlayer.mY); iDown++)
-		{
-			if (aBoard[aPlayer.mX][aPlayer.mY + iDown].mbRight)
-			{
-				break;
-			}
-		}
-
-		if (iDown < iUp)
-		{
-			// Si c'est possible d'aller en bas, on le fait sinon on recule
-			if (aBoard[aPlayer.mX][aPlayer.mY].mbDown)
-			{
-				cout << "DOWN" << endl;
-			}
-			else
-			{
-				cout << "LEFT" << endl;
-			}
-		}
-		else
-		{
-			// Si c'est possible d'aller en haut, on le fait sinon on recule
-			if (aBoard[aPlayer.mX][aPlayer.mY].mbUp)
-			{
-				cout << "UP" << endl;
-			}
-			else
-			{
-				cout << "LEFT" << endl;
-			}
-		}
+		cout << "UP" << endl;
 	}
+	// Bas
+	if ((NextMove.first == aPlayer.mX) && (NextMove.second == aPlayer.mY + 1))
+	{
+		cout << "DOWN" << endl;
+	}
+
+	cerr 	<< "MoveMyPlayer - MeilleureSortie : (" << MeilleureSortie.first << "," << MeilleureSortie.second << ")"
+			<< " - NextMove : (" << NextMove.first << "," << NextMove.second << ")" << endl;
 }
 
 /**
@@ -247,8 +408,8 @@ int main()
             int wallsLeft; 	// number of walls available for the player
             cin >> x >> y >> wallsLeft; cin.ignore();
 
-            // Peuplement du tableau des joueurs
-            PlayerVector.push_back (TPlayer (i, x, y, wallsLeft));
+			// Peuplement du tableau des joueurs
+			PlayerVector.push_back (TPlayer (i, x, y, wallsLeft));
         }
 
 
@@ -266,16 +427,26 @@ int main()
         }
 
         // Maj du board suite maj du nombre de murs
+        cerr << "MajBoard" << endl;
         MajBoard (Board, WallVector, w, h);
 
+        // Calcule les possibilités de déplacement
+        cerr << "ComputePath" << endl;
+        /*TPlayer::Vector::iterator iPlayer;
+	    for (iPlayer = PlayerVector.begin(); iPlayer != PlayerVector.end(); iPlayer++)
+	    {
+            iPlayer->ComputePath (Board);
+	    }*/
+	    PlayerVector[myId].ComputePath (Board);
+
         // Dump des tableaux
+        cerr << "Dump" << endl;
         Dump (PlayerVector, WallVector);
+    	cerr << "************* Path **********************" << endl;
+        PlayerVector[myId].mPath.Dump();
 
-        // Acquisition mon joueur
-        TPlayer MyPlayer = PlayerVector[myId];
-
-        // Bouge mon joueur en conséquence des murs qui ont été posés
-        MoveMyPlayer (Board, MyPlayer, w, h);
+        // Bouge mon joueur
+        MoveMyPlayer (PlayerVector[myId]);
 
         //cout << "RIGHT" << endl; // action: LEFT, RIGHT, UP, DOWN or "putX putY putOrientation" to place a wall
     }
