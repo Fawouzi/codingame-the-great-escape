@@ -21,15 +21,15 @@ typedef vector<TCoordonnees>	TVectorCoordonnees;
 
 struct TMovesByCell
 {
-    typedef vector<TMovesByCell> 	Vector;
-    typedef vector<Vector>			Matrix;
+   typedef vector<TMovesByCell> 	Vector;
+   typedef vector<Vector>			   Matrix;
 
 	bool mbUp;
 	bool mbDown;
 	bool mbLeft;
 	bool mbRight;
 
-	// On peut bouger dans tous les sens par défaut
+	// On peut bouger dans tous les sens par dï¿½faut
 	TMovesByCell () :
 		mbUp 	(true),
 		mbDown	(true),
@@ -37,8 +37,37 @@ struct TMovesByCell
 		mbRight (true)
 	{
 	}
+
+	const char* Dump (void)
+	{
+	   stringstream   Trace;
+
+	   Trace
+	      << "U" << (mbUp ? "1" : "0")
+         << "D" << (mbDown ? "1" : "0")
+         << "L" << (mbLeft ? "1" : "0")
+         << "R" << (mbRight ? "1" : "0");
+
+	   return Trace.str().c_str();
+	}
 };
 
+void DumpMatrix (TMovesByCell::Matrix& aMatrix)
+{
+   stringstream   Trace;
+
+   for (int y = 0; y < 9; y++)
+   {
+      for (int x = 0; x < 9; x++)
+      {
+         Trace << aMatrix[x][y].Dump() << " ";
+      }
+
+      Trace << "\r\n";
+   }
+
+   cerr << Trace.str().c_str() << endl;
+}
 
 struct TPath
 {
@@ -47,13 +76,18 @@ struct TPath
 
 	TPath (void)
 	{
-		for (int x = 0; x < 9; x++)
-		{
-			for (int y = 0; y < 9; y++)
-			{
-				mBoard[x][y] = -1;
-			}
-		}
+	   Reset ();
+	}
+
+	void Reset (void)
+	{
+      for (int x = 0; x < 9; x++)
+      {
+         for (int y = 0; y < 9; y++)
+         {
+            mBoard[x][y] = -1;
+         }
+      }
 	}
 
 	void Dump (void)
@@ -75,20 +109,20 @@ struct TPath
 
 	void ProchaineCase (int aX, int aY, int aDistance, TVectorCoordonnees& aVectorCoordonnees)
 	{
-		// La case existe et elle n'avait pas été visitée
+		// La case existe et elle n'avait pas ï¿½tï¿½ visitï¿½e
 		if ((0 <= aX) && (8 >= aX) && (0 <= aY) && (8 >= aY) && (-1 == mBoard[aX][aY]))
 		{
 			// Maj de la distance
 			mBoard[aX][aY] = aDistance;
 
-			// Ajout de la case aux prochaines à evaluer
+			// Ajout de la case aux prochaines ï¿½ evaluer
 			aVectorCoordonnees.push_back(make_pair(aX, aY));
 		}
 	}
 
 	void Compute (int aX, int aY, TMovesByCell::Matrix& aBoard)
 	{
-        cerr << "Compute - aX : " << aX << " - aY : " << aY  << endl;
+      cerr << "Compute - aX : " << aX << " - aY : " << aY  << endl;
 
 		int distance = 0;
 		int casesVisitees = 81;
@@ -100,13 +134,13 @@ struct TPath
 		distance++;
 		VectorCoordonnees.push_back(make_pair(aX, aY));
 
-		while (		casesVisitees 				// Il reste des cases à visiter
-				&& !VectorCoordonnees.empty())	// Il y a des candidats accessibles (vérifie que les murs ne nous bloquent pas)
+		while (		casesVisitees 				// Il reste des cases ï¿½ visiter
+				&& !VectorCoordonnees.empty())	// Il y a des candidats accessibles (vï¿½rifie que les murs ne nous bloquent pas)
 		{
 			TVectorCoordonnees				VectorCoordonneesResultat;
 			TVectorCoordonnees::iterator  	iVecCoord;
 
-			// Parcours des coordonnées obtenues précédemment
+			// Parcours des coordonnï¿½es obtenues prï¿½cï¿½demment
 			for (iVecCoord = VectorCoordonnees.begin(); iVecCoord != VectorCoordonnees.end(); iVecCoord++)
 			{
 				int X = iVecCoord->first;
@@ -130,13 +164,13 @@ struct TPath
 				}
 			}
 
-			// Le nombre de cases visitées diminue autant que de résultats
+			// Le nombre de cases visitï¿½es diminue autant que de rï¿½sultats
 			casesVisitees -= VectorCoordonneesResultat.size();
 
 			// La distance augmente
 			distance++;
 
-			// Sauve pour la prochaine itération
+			// Sauve pour la prochaine itï¿½ration
 			VectorCoordonnees = VectorCoordonneesResultat;
 		}
 	}
@@ -188,6 +222,11 @@ struct TPlayer
     	return bFound;
     }
 
+    void ResetPath (void)
+    {
+       mPath.Reset();
+    }
+
     void ComputePath (TMovesByCell::Matrix& aBoard)
     {
     	mPath.Compute (mX, mY, aBoard);
@@ -196,7 +235,7 @@ struct TPlayer
     void ComputeDistance (void)
     {
     	TCoordonnees	MeilleureSortie;
-    	int distance =  999;	// Initialise à une très grande valeur pour la sélection
+    	int distance =  999;	// Initialise ï¿½ une trï¿½s grande valeur pour la sï¿½lection
 
     	switch (mDirection)
     	{
@@ -244,6 +283,11 @@ struct TPlayer
     {
     	return (-1 != mX);
     }
+
+    bool IsBlocked (void)
+    {
+      return (999 == mDistance);
+    }
 };
 
 
@@ -255,7 +299,7 @@ struct TWall
     int 	mY;
     string 	mOrientation;
 
-    // Constructeur par défaut
+    // Constructeur par dï¿½faut
     TWall (void)
 	{
     	Raz();
@@ -336,34 +380,43 @@ struct TWall
     }
 };
 
+void DumpPlayers (TPlayer::Vector& aPlayerVector)
+{
+   cerr << "************* Players ********************" << endl;
+   TPlayer::Vector::iterator iPlayer;
+   for (iPlayer = aPlayerVector.begin(); iPlayer != aPlayerVector.end(); iPlayer++)
+   {
+         cerr  << "Player : " << iPlayer->mId << " - X : " << iPlayer->mX << " - Y : " << iPlayer->mY
+               << " - WallsLeft : " << iPlayer->mWallsLeft << " - Distance : " << iPlayer->mDistance
+               << " - DistancePond : " << iPlayer->mDistancePond << endl;
+
+         if (iPlayer->IsAlive())
+         {
+            cerr << "************* Path **********************" << endl;
+            iPlayer->mPath.Dump();
+         }
+         else
+         {
+            cerr << "Dead" << endl;
+         }
+   }
+}
+
+void DumpWalls (TWall::Vector& aWallVector)
+{
+   cerr << "************* Walls **********************" << endl;
+   TWall::Vector::iterator iWall;
+   for (iWall = aWallVector.begin(); iWall != aWallVector.end(); iWall++)
+   {
+         cerr  << "Wall " << " - X : " << iWall->mX << " - Y : " << iWall->mY
+               << " - Orientation : " << iWall->mOrientation << endl;
+   }
+}
+
 void Dump (TPlayer::Vector& aPlayerVector, TWall::Vector& aWallVector)
 {
-	cerr << "************* Players ********************" << endl;
-	TPlayer::Vector::iterator iPlayer;
-	for (iPlayer = aPlayerVector.begin(); iPlayer != aPlayerVector.end(); iPlayer++)
-	{
-       	cerr 	<< "Player : " << iPlayer->mId << " - X : " << iPlayer->mX << " - Y : " << iPlayer->mY
-       			<< " - WallsLeft : " << iPlayer->mWallsLeft << " - Distance : " << iPlayer->mDistance
-       			<< " - DistancePond : " << iPlayer->mDistancePond << endl;
-
-       	if (iPlayer->IsAlive())
-       	{
-       		cerr << "************* Path **********************" << endl;
-       		iPlayer->mPath.Dump();
-       	}
-       	else
-       	{
-       		cerr << "Dead" << endl;
-       	}
-	}
-
-	cerr << "************* Walls **********************" << endl;
-	TWall::Vector::iterator iWall;
-	for (iWall = aWallVector.begin(); iWall != aWallVector.end(); iWall++)
-	{
-       	cerr 	<< "Wall " << " - X : " << iWall->mX << " - Y : " << iWall->mY
-       			<< " - Orientation : " << iWall->mOrientation << endl;
-	}
+   DumpPlayers (aPlayerVector);
+   DumpWalls   (aWallVector);
 }
 
 void InitBoard (TMovesByCell::Matrix& aBoard, int aWidth, int aHeight)
@@ -450,7 +503,7 @@ void MoveMyPlayer (TPlayer& aPlayer, TMovesByCell::Matrix& aBoard)
 		distance--;
 	}
 
-	// Compare NextMove à la position courante
+	// Compare NextMove ï¿½ la position courante
 
 	// Gauche
 	if ((NextMove.first == aPlayer.mX - 1) && (NextMove.second == aPlayer.mY))
@@ -528,47 +581,38 @@ TWall BestWallToBlock (int aWinner, const TPlayer::Vector& aPlayerVector, const 
 {
 	TWall BestWall;
 
+	// Initialise Ã  la position de l'adversaire
+	BestWall.mX = aPlayerVector[aWinner].mX;
+   BestWall.mY = aPlayerVector[aWinner].mY;
+
 	switch (aPlayerVector[aWinner].mDirection)
 	{
 		case eRight:
-			// Cas particulier de la sortie en bas à droite
-			if (aPlayerVector[aWinner].mMeilleureSortie.second == 8)
+			// Cas particulier de la derniÃ¨re ligne
+			if (BestWall.mY == 8)
 			{
-				BestWall.mY = 7;
+				BestWall.mY--;
 			}
-			else
-			{
-				BestWall.mY = aPlayerVector[aWinner].mMeilleureSortie.second;
-			}
-			BestWall.mX = aPlayerVector[aWinner].mMeilleureSortie.first;
+			BestWall.mX++;
 			BestWall.mOrientation = "V";
 			break;
 
 		case eLeft:
-			// Cas particulier de la case en bas à gauche
-			if (aPlayerVector[aWinner].mMeilleureSortie.second == 8)
-			{
-				BestWall.mY = 7;
-			}
-			else
-			{
-				BestWall.mY = aPlayerVector[aWinner].mMeilleureSortie.second;
-			}
-			BestWall.mX = aPlayerVector[aWinner].mMeilleureSortie.first + 1;
+         // Cas particulier de la derniÃ¨re ligne
+         if (BestWall.mY == 8)
+         {
+            BestWall.mY--;
+         }
 			BestWall.mOrientation = "V";
 			break;
 
 		case eDown:
-			// Cas particulier de la sortie en bas à droite
-			if (aPlayerVector[aWinner].mMeilleureSortie.first == 8)
-			{
-				BestWall.mX = 7;
-			}
-			else
-			{
-				BestWall.mX = aPlayerVector[aWinner].mMeilleureSortie.first;
-			}
-			BestWall.mY = aPlayerVector[aWinner].mMeilleureSortie.second;
+         // Cas particulier de la derniÃ¨re colonne
+         if (BestWall.mX == 8)
+         {
+            BestWall.mX--;
+         }
+			BestWall.mY++;
 			BestWall.mOrientation = "H";
 			break;
 	}
@@ -580,6 +624,42 @@ TWall BestWallToBlock (int aWinner, const TPlayer::Vector& aPlayerVector, const 
 	}
 
 	return BestWall;
+}
+
+bool NewWallDontBlock (TWall& aNewWall, TPlayer::Vector& aPlayerVector,
+                       TWall::Vector& aWallVector, TMovesByCell::Matrix& aBoard)
+{
+   bool bDontBlock = true;
+
+   // Ajout du nouveau mur
+   aWallVector.push_back(aNewWall);
+   DumpWalls(aWallVector);
+
+   MajBoard(aBoard, aWallVector, 9, 9);
+   DumpMatrix (aBoard);
+
+   TPlayer::Vector::iterator iPlayer;
+   for (iPlayer = aPlayerVector.begin(); iPlayer != aPlayerVector.end(); iPlayer++)
+   {
+     if (iPlayer->IsAlive())
+     {
+        iPlayer->ResetPath();
+        iPlayer->ComputePath (aBoard);
+        iPlayer->ComputeDistance();
+
+        if (iPlayer->IsBlocked())
+        {
+           cerr  << "NewWallDontBlock - Wall (" << aNewWall.mX << "," << aNewWall.mY << "," << aNewWall.mOrientation << ")"
+                 << " is blocking player " << iPlayer->mId << endl;
+           bDontBlock = false;
+           break;
+        }
+     }
+   }
+
+   DumpPlayers(aPlayerVector);
+
+   return bDontBlock;
 }
 
 /**
@@ -610,7 +690,7 @@ int main()
     	PlayerVector.clear();
     	WallVector.clear();
 
-    	// Démarre mesure
+    	// Dï¿½marre mesure
     	StartMesure = chrono::steady_clock::now();
 
     	// Parcours des joueurs
@@ -644,7 +724,7 @@ int main()
         MajBoard (Board, WallVector, w, h);
         TraceTime ("MajBoard : ", StartMesure);
 
-        // Calcule les possibilités de déplacement
+        // Calcule les possibilitï¿½s de dï¿½placement
         TPlayer::Vector::iterator iPlayer;
 	    for (iPlayer = PlayerVector.begin(); iPlayer != PlayerVector.end(); iPlayer++)
 	    {
@@ -662,12 +742,12 @@ int main()
         TraceTime ("Dump - end : ", StartMesure);
 
         // TODO FAB : A mutualiser
-        // Détermine le ranking
+        // Dï¿½termine le ranking
         int Winner 	= WhoIsWinning 	(PlayerVector);
         int Loser 	= WhoIsLosing 	(PlayerVector);
         cerr << "Winner : Player " << Winner << " - Loser : Player " << Loser << endl;
 
-        // Je ne suis pas le dernier alors je continue à avancer
+        // Je ne suis pas le dernier alors je continue ï¿½ avancer
         if (myId != Loser)
         {
             // Bouge mon joueur
@@ -689,12 +769,24 @@ int main()
         		TWall BestWall = BestWallToBlock (Winner, PlayerVector, WallVector);
 				if (BestWall.IsValide())
 				{
-					PutWall(BestWall);
+				   TWall::Vector        WallVectorCopie   = WallVector;
+				   TMovesByCell::Matrix BoardCopie        = Board;
+				   TPlayer::Vector      PlayerVectorCopie = PlayerVector;
+
+				   if (NewWallDontBlock(BestWall, PlayerVectorCopie, WallVectorCopie, BoardCopie))
+				   {
+				      PutWall(BestWall);
+				   }
+				   else
+				   {
+	                cerr << "Can't put wall bc it is blocking : have to move" << endl;
+	                bHaveToMove = true;
+				   }
 				}
 				else
 				{
-	                cerr << "Can't put wall : have to move" << endl;
-	                bHaveToMove = true;
+                cerr << "Can't put wall : have to move" << endl;
+                bHaveToMove = true;
 				}
         	}
 
